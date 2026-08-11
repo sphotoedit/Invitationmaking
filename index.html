@@ -349,7 +349,7 @@
     opacity:0; transform:translateY(18px);
   }
   .card.in-view{ opacity:1; transform:translateY(0); }
-  .card:hover{transform:translateY(-5px); box-shadow:0 18px 40px -14px rgba(28,28,34,.28);}
+  .card:hover{box-shadow:0 18px 40px -14px rgba(28,28,34,.28);}
 
   .card-media{
     position:relative; aspect-ratio:4/5; background:var(--paper-deep);
@@ -425,6 +425,25 @@
     animation:shimmer 1.5s infinite;
   }
   @keyframes shimmer { 100% { transform:translateX(100%); } }
+  
+  .loading-text-cycler {
+    position: relative; font-family: var(--font-display); font-size: clamp(18px, 3.5vw, 26px);
+    font-weight: 700; color: #888; width: 100%; height: 40px; overflow: hidden; z-index:2;
+  }
+  .loading-text-cycler span {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    opacity: 0; animation: cycleText 6s infinite;
+  }
+  .loading-text-cycler span:nth-child(1) { animation-delay: 0s; }
+  .loading-text-cycler span:nth-child(2) { animation-delay: 2s; }
+  .loading-text-cycler span:nth-child(3) { animation-delay: 4s; }
+  @keyframes cycleText {
+    0% { opacity: 0; transform: translateY(15px); }
+    8% { opacity: 1; transform: translateY(0); }
+    25% { opacity: 1; transform: translateY(0); }
+    33% { opacity: 0; transform: translateY(-15px); }
+    100% { opacity: 0; transform: translateY(-15px); }
+  }
 
   .card-carousel { position:absolute; inset:0; width:100%; height:100%; }
   .card-carousel img { position:absolute; inset:0; opacity:0; transition:opacity 0.6s var(--ease); z-index:1; }
@@ -541,15 +560,28 @@
 </header>
 
 <section class="hero-carousel" id="heroCarousel" aria-label="Special offers">
-  <div class="hc-track" id="hcTrack"></div>
-  <button class="hc-arrow hc-prev" id="hcPrev" aria-label="Previous offer">&#8249;</button>
-  <button class="hc-arrow hc-next" id="hcNext" aria-label="Next offer">&#8250;</button>
-  <div class="hc-dots" id="hcDots"></div>
+  <div class="hc-track" id="hcTrack">
+    <div class="hc-slide shimmer" style="background:#e0e0e0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; text-align:center;">
+      <div class="loading-text-cycler">
+        <span>Loading Amazing Invites...</span>
+        <span>Starting at just ₹499/-</span>
+        <span>Latest designs on the way...</span>
+      </div>
+    </div>
+  </div>
+  <button class="hc-arrow hc-prev" id="hcPrev" aria-label="Previous offer" style="display:none;">&#8249;</button>
+  <button class="hc-arrow hc-next" id="hcNext" aria-label="Next offer" style="display:none;">&#8250;</button>
+  <div class="hc-dots" id="hcDots" style="display:none;"></div>
 </section>
 
 <main class="grid-wrap">
   <div class="result-bar" id="resultCount"><span class="dot"></span>Loading catalog...</div>
-  <div class="grid" id="grid"></div>
+  <div class="grid" id="grid">
+    <article class="skeleton-card"><div class="skeleton-media shimmer"></div><div class="skeleton-body"><div class="skeleton-title shimmer"></div><div class="skeleton-price shimmer"></div><div class="skeleton-btn shimmer" style="margin-top:14px;"></div></div></article>
+    <article class="skeleton-card"><div class="skeleton-media shimmer"></div><div class="skeleton-body"><div class="skeleton-title shimmer"></div><div class="skeleton-price shimmer"></div><div class="skeleton-btn shimmer" style="margin-top:14px;"></div></div></article>
+    <article class="skeleton-card"><div class="skeleton-media shimmer"></div><div class="skeleton-body"><div class="skeleton-title shimmer"></div><div class="skeleton-price shimmer"></div><div class="skeleton-btn shimmer" style="margin-top:14px;"></div></div></article>
+    <article class="skeleton-card"><div class="skeleton-media shimmer"></div><div class="skeleton-body"><div class="skeleton-title shimmer"></div><div class="skeleton-price shimmer"></div><div class="skeleton-btn shimmer" style="margin-top:14px;"></div></div></article>
+  </div>
 </main>
 
 <footer>
@@ -666,6 +698,7 @@ const PRICE_FILTERS = [
   { key:'200-399', label:'200 - 400' },
   { key:'400-799', label:'400 - 800' },
   { key:'800-1500', label:'800 - 1500' },
+  { key:'1500+', label:'1500 & Above' },
 ];
 const TYPE_FILTERS = [
   { key:'All', label:'All' },
@@ -733,6 +766,7 @@ function matchesPriceFilter(item){
   if (ACTIVE_PRICE === '200-399') return price >= 200 && price < 400;
   if (ACTIVE_PRICE === '400-799') return price >= 400 && price < 800;
   if (ACTIVE_PRICE === '800-1500') return price >= 800 && price <= 1500;
+  if (ACTIVE_PRICE === '1500+') return price > 1500;
   return true;
 }
 
@@ -755,7 +789,14 @@ async function loadCatalog(){
     </article>`).join('');
 
   document.getElementById('heroCarousel').style.display = '';
-  document.getElementById('hcTrack').innerHTML = '<div class="hc-slide shimmer" style="background:#e0e0e0; width:100%; height:100%;"></div>';
+  document.getElementById('hcTrack').innerHTML = `
+    <div class="hc-slide shimmer" style="background:#e0e0e0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; text-align:center;">
+      <div class="loading-text-cycler">
+        <span>Loading Amazing Invites...</span>
+        <span>Starting at just ₹499/-</span>
+        <span>Latest designs on the way...</span>
+      </div>
+    </div>`;
   document.getElementById('hcPrev').style.display = 'none';
   document.getElementById('hcNext').style.display = 'none';
   document.getElementById('hcDots').style.display = 'none';
@@ -773,6 +814,8 @@ async function loadCatalog(){
     if (data.offers && data.offers.length > 0) {
       CONFIG.OFFERS = data.offers;
       initHeroCarousel();
+    } else {
+      document.getElementById('heroCarousel').style.display = 'none';
     }
     
     ALL_ITEMS = (data.items || []).filter(i => i.Title);
@@ -817,6 +860,7 @@ function render(){
       const code = String(i['Invite Code'] || i['C'] || i['Code'] || i['No.'] || i.ID || '').toLowerCase();
       return String(i.Title).toLowerCase().includes(q) ||
              String(i.Category).toLowerCase().includes(q) ||
+             String(i.Description || '').toLowerCase().includes(q) ||
              code.includes(q);
     });
   }
@@ -1023,15 +1067,21 @@ document.addEventListener('keydown', e => {
 });
 
 let lightboxTouchStartX = 0;
+let lightboxTouchStartY = 0;
 const lightboxStage = document.getElementById('modalStage');
 lightboxStage.addEventListener('touchstart', e => {
   lightboxTouchStartX = e.touches[0].clientX;
+  lightboxTouchStartY = e.touches[0].clientY;
 }, { passive:true });
 lightboxStage.addEventListener('touchend', e => {
   if (!document.getElementById('lightbox').classList.contains('open')) return;
   const touch = e.changedTouches[0];
   const dx = touch.clientX - lightboxTouchStartX;
+  const dy = touch.clientY - lightboxTouchStartY;
+  
   if (Math.abs(dx) < 50) return;
+  if (Math.abs(dy) > Math.abs(dx)) return;
+  
   if (dx < 0) lightboxNext();
   else lightboxPrev();
 }, { passive:true });
@@ -1071,7 +1121,6 @@ function escapeHtml(str){
 function escapeAttr(str){ return escapeHtml(str); }
 
 loadCatalog();
-initHeroCarousel();
 
 // ---------- hero offer carousel ----------
 function initHeroCarousel(){
