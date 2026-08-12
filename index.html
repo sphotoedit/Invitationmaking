@@ -225,6 +225,19 @@
   }
 
   /* ============ HERO IMAGE CAROUSEL ============ */
+  .hero-loader-bg {
+    position: relative;
+    background: #ffffff;
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+    overflow: hidden;
+  }
+  @keyframes gradientBG {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
   .hero-carousel{
     position:relative; width:100%; max-width:1180px; margin:20px auto 0; padding:0 20px;
     height:clamp(160px, 34vw, 290px);
@@ -427,22 +440,22 @@
   @keyframes shimmer { 100% { transform:translateX(100%); } }
   
   .loading-text-cycler {
-    position: relative; font-family: var(--font-display); font-size: clamp(18px, 3.5vw, 26px);
-    font-weight: 700; color: #888; width: 100%; height: 40px; overflow: hidden; z-index:2;
+    position: relative; font-family: var(--font-display); font-size: clamp(18px, 4vw, 24px);
+    font-weight: 800; color: #222222; width: 100%; height: 35px; overflow: hidden; z-index:2;
   }
   .loading-text-cycler span {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    opacity: 0; animation: cycleText 6s infinite;
+    opacity: 0; animation: cycleText 9s infinite;
   }
   .loading-text-cycler span:nth-child(1) { animation-delay: 0s; }
-  .loading-text-cycler span:nth-child(2) { animation-delay: 2s; }
-  .loading-text-cycler span:nth-child(3) { animation-delay: 4s; }
+  .loading-text-cycler span:nth-child(2) { animation-delay: 3s; }
+  .loading-text-cycler span:nth-child(3) { animation-delay: 6s; }
   @keyframes cycleText {
-    0% { opacity: 0; transform: translateY(15px); }
+    0% { opacity: 0; transform: translateY(10px); }
     8% { opacity: 1; transform: translateY(0); }
     25% { opacity: 1; transform: translateY(0); }
-    33% { opacity: 0; transform: translateY(-15px); }
-    100% { opacity: 0; transform: translateY(-15px); }
+    33% { opacity: 0; transform: translateY(-10px); }
+    100% { opacity: 0; transform: translateY(-10px); }
   }
 
   .card-carousel { position:absolute; inset:0; width:100%; height:100%; }
@@ -561,8 +574,9 @@
 
 <section class="hero-carousel" id="heroCarousel" aria-label="Special offers">
   <div class="hc-track" id="hcTrack">
-    <div class="hc-slide shimmer" style="background:#e0e0e0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; text-align:center;">
-      <div class="loading-text-cycler">
+    <div class="hc-slide hero-loader-bg">
+      <img src="https://i.ibb.co/7dQmHrmj/Loading.gif" alt="Loading" style="position:absolute; inset:0; width:100%; height:100%; object-fit:contain; pointer-events:none; mix-blend-mode:multiply; padding:15px 0 45px 0;">
+      <div class="loading-text-cycler" style="position:absolute; bottom:15px; left:0; right:0;">
         <span>Loading Amazing Invites...</span>
         <span>Starting at just ₹499/-</span>
         <span>Latest designs on the way...</span>
@@ -777,54 +791,107 @@ function matchesTypeFilter(item){
 
 // ---------- fetch catalog ----------
 async function loadCatalog(){
-  // Render skeleton cards while loading
-  grid.innerHTML = Array(8).fill(0).map(() => `
-    <article class="skeleton-card">
-      <div class="skeleton-media shimmer"></div>
-      <div class="skeleton-body">
-        <div class="skeleton-title shimmer"></div>
-        <div class="skeleton-price shimmer"></div>
-        <div class="skeleton-btn shimmer" style="margin-top:14px;"></div>
-      </div>
-    </article>`).join('');
+  let cachedData = null;
+  try {
+    const cachedStr = localStorage.getItem('inviteCatalogData');
+    if (cachedStr) {
+      cachedData = JSON.parse(cachedStr);
+      if (cachedData.items && cachedData.items.length > 0) {
+        if (cachedData.offers && cachedData.offers.length > 0) {
+          CONFIG.OFFERS = cachedData.offers;
+          initHeroCarousel();
+        } else {
+          document.getElementById('heroCarousel').style.display = 'none';
+        }
+        ALL_ITEMS = (cachedData.items || []).filter(i => i.Title);
+        buildCategoryPills();
+        render();
+      } else {
+        cachedData = null;
+      }
+    }
+  } catch(e) {}
 
-  document.getElementById('heroCarousel').style.display = '';
-  document.getElementById('hcTrack').innerHTML = `
-    <div class="hc-slide shimmer" style="background:#e0e0e0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; text-align:center;">
-      <div class="loading-text-cycler">
-        <span>Loading Amazing Invites...</span>
-        <span>Starting at just ₹499/-</span>
-        <span>Latest designs on the way...</span>
-      </div>
-    </div>`;
-  document.getElementById('hcPrev').style.display = 'none';
-  document.getElementById('hcNext').style.display = 'none';
-  document.getElementById('hcDots').style.display = 'none';
+  if (!cachedData) {
+    grid.innerHTML = Array(8).fill(0).map(() => `
+      <article class="skeleton-card">
+        <div class="skeleton-media shimmer"></div>
+        <div class="skeleton-body">
+          <div class="skeleton-title shimmer"></div>
+          <div class="skeleton-price shimmer"></div>
+          <div class="skeleton-btn shimmer" style="margin-top:14px;"></div>
+        </div>
+      </article>`).join('');
+
+    document.getElementById('heroCarousel').style.display = '';
+    document.getElementById('hcTrack').innerHTML = `
+      <div class="hc-slide hero-loader-bg">
+        <img src="https://i.ibb.co/7dQmHrmj/Loading.gif" alt="Loading" style="position:absolute; inset:0; width:100%; height:100%; object-fit:contain; pointer-events:none; mix-blend-mode:multiply; padding:15px 0 45px 0;">
+        <div class="loading-text-cycler" style="position:absolute; bottom:15px; left:0; right:0;">
+          <span>Loading Amazing Invites...</span>
+          <span>Starting at just ₹499/-</span>
+          <span>Latest designs on the way...</span>
+        </div>
+      </div>`;
+    document.getElementById('hcPrev').style.display = 'none';
+    document.getElementById('hcNext').style.display = 'none';
+    document.getElementById('hcDots').style.display = 'none';
+  }
 
   if (CONFIG.SHEET_API_URL.indexOf('PASTE_YOUR') === 0){
-    ALL_ITEMS = DUMMY_ITEMS;
-    buildCategoryPills();
-    render();
+    if (!cachedData) {
+      ALL_ITEMS = DUMMY_ITEMS;
+      buildCategoryPills();
+      render();
+    }
     return;
   }
-  try{
-    const res = await fetch(CONFIG.SHEET_API_URL);
-    const data = await res.json();
-    
-    if (data.offers && data.offers.length > 0) {
-      CONFIG.OFFERS = data.offers;
-      initHeroCarousel();
-    } else {
-      document.getElementById('heroCarousel').style.display = 'none';
+  
+  try {
+    let data = null;
+    let retries = 3;
+    for (let i = 0; i < retries; i++) {
+      try {
+        const res = await fetch(CONFIG.SHEET_API_URL);
+        const text = await res.text();
+        data = JSON.parse(text);
+        break; // success
+      } catch (e) {
+        if (i === retries - 1) throw e;
+        await new Promise(r => setTimeout(r, 1200)); // wait 1.2s before retry
+      }
     }
     
-    ALL_ITEMS = (data.items || []).filter(i => i.Title);
-    buildCategoryPills();
-    render();
-  }catch(err){
-    grid.innerHTML = '<div class="empty">Couldn\'t load the catalog. Check the Sheet API URL.</div>';
-    resultCount.textContent = '';
-    console.error(err);
+    const freshStr = JSON.stringify(data);
+    const oldStr = localStorage.getItem('inviteCatalogData');
+    
+    if (freshStr !== oldStr) {
+      localStorage.setItem('inviteCatalogData', freshStr);
+      
+      if (!cachedData) {
+        if (data.offers && data.offers.length > 0) {
+          CONFIG.OFFERS = data.offers;
+          initHeroCarousel();
+        } else {
+          document.getElementById('heroCarousel').style.display = 'none';
+        }
+      }
+      
+      ALL_ITEMS = (data.items || []).filter(i => i.Title);
+      buildCategoryPills();
+      render();
+    }
+  } catch(err) {
+    if (!cachedData) {
+      document.getElementById('heroCarousel').style.display = 'none';
+      grid.innerHTML = `
+        <div class="empty" style="display:flex; flex-direction:column; align-items:center; gap:16px;">
+          <div style="font-size:16px; font-weight:500;">Connection timeout. Please try again.</div>
+          <button onclick="window.location.reload();" class="filter-action filter-done" style="width:auto; padding:12px 24px; cursor:pointer;">Refresh Page</button>
+        </div>`;
+      resultCount.textContent = '';
+      console.error('Fetch error:', err);
+    }
   }
 }
 
