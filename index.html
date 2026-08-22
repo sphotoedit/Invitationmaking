@@ -49,6 +49,7 @@
   a{color:inherit;text-decoration:none;}
   button{font-family:inherit;cursor:pointer;}
   img{max-width:100%;display:block;}
+  body.no-scroll { overflow: hidden; touch-action: none; }
 
   /* ============ HEADER ============ */
   header.site{
@@ -621,6 +622,9 @@
     <button class="modal-nav modal-prev" id="modalPrev" aria-label="Previous">&#8249;</button>
     <button class="modal-nav modal-next" id="modalNext" aria-label="Next">&#8250;</button>
     <div class="modal-stage" id="modalStage"></div>
+    <div style="text-align:center; font-size:10px; color:rgba(255,255,255,0.4); padding:6px 12px 0 12px; font-weight:500; letter-spacing:0.3px;">
+      © Copyrighted Design. AI reproduction, generation, or imitation is strictly prohibited and subject to legal action.
+    </div>
     <div class="modal-footer">
       <div class="mf-info">
         <div class="mf-eyebrow" id="mfEyebrow"></div>
@@ -705,6 +709,10 @@ let CURRENT_ITEMS = [];
 let ACTIVE_CATEGORY = 'All';
 let ACTIVE_PRICE = 'All';
 let ACTIVE_TYPE = 'All';
+let MAIN_HERO_OFFERS = [];
+let CATEGORY_HEROES = {};
+let CATEGORY_ORDER = [];
+let heroCleanup = null;
 
 const PRICE_FILTERS = [
   { key:'All', label:'All' },
@@ -789,6 +797,62 @@ function matchesTypeFilter(item){
   return String(item.Type || '').toLowerCase() === ACTIVE_TYPE.toLowerCase();
 }
 
+function shuffleItems(items){
+  const shuffled = [...items];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+function setCatalog(items, categoryOrder = []){
+  // A fresh order is created on each page load, while every category keeps
+  // that random order for the rest of the visit.
+  const catalogItems = (items || []).filter(i => i.Title);
+  // Older deployments do not yet return categoryOrder. Their rows are still
+  // delivered sheet-by-sheet, so retain that order as a graceful fallback.
+  const rowOrder = [...new Set(catalogItems.map(i => i.Category).filter(Boolean))];
+  CATEGORY_ORDER = Array.isArray(categoryOrder) && categoryOrder.length ? categoryOrder : rowOrder;
+  ALL_ITEMS = shuffleItems(catalogItems);
+  buildCategoryPills();
+  render();
+}
+
+function setHeroData(data){
+  const rawOffers = data && Array.isArray(data.offers) ? data.offers : [];
+  const heroRowsFromSheet = {};
+
+  // Supports the simple Hero-sheet layout even when an older Apps Script is
+  // still live: #1 is the All cover, while a row named Birthday, Ganesh
+  // Chaturthi, etc. is the fixed cover for that matching category tab.
+  rawOffers.forEach(offer => {
+    const target = String(offer['No.'] || '').trim();
+    if (target && !target.startsWith('#')) {
+      heroRowsFromSheet[target] = {
+        image: offer.image || offer.URL || '',
+        link: offer.link || offer['More Info'] || '#grid'
+      };
+    }
+  });
+
+  const allCover = rawOffers.find(offer => String(offer['No.'] || '').trim() === '#1');
+  MAIN_HERO_OFFERS = allCover ? [allCover] : rawOffers.slice(0, 1);
+  CATEGORY_HEROES = {
+    ...heroRowsFromSheet,
+    ...(data && data.categoryHeroes ? data.categoryHeroes : {})
+  };
+  updateHeroForCategory();
+}
+
+function updateHeroForCategory(){
+  const cover = ACTIVE_CATEGORY === 'All' ? null : CATEGORY_HEROES[ACTIVE_CATEGORY];
+  const slides = cover && cover.image
+    ? [{ image: cover.image, link: cover.link || '#grid', title: '', tag: '' }]
+    : MAIN_HERO_OFFERS;
+  initHeroCarousel(slides);
+}
+
 // ---------- fetch catalog ----------
 async function loadCatalog(){
   let cachedData = null;
@@ -797,15 +861,8 @@ async function loadCatalog(){
     if (cachedStr) {
       cachedData = JSON.parse(cachedStr);
       if (cachedData.items && cachedData.items.length > 0) {
-        if (cachedData.offers && cachedData.offers.length > 0) {
-          CONFIG.OFFERS = cachedData.offers;
-          initHeroCarousel();
-        } else {
-          document.getElementById('heroCarousel').style.display = 'none';
-        }
-        ALL_ITEMS = (cachedData.items || []).filter(i => i.Title);
-        buildCategoryPills();
-        render();
+        setHeroData(cachedData);
+        setCatalog(cachedData.items, cachedData.categoryOrder);
       } else {
         cachedData = null;
       }
@@ -840,9 +897,8 @@ async function loadCatalog(){
 
   if (CONFIG.SHEET_API_URL.indexOf('PASTE_YOUR') === 0){
     if (!cachedData) {
-      ALL_ITEMS = DUMMY_ITEMS;
-      buildCategoryPills();
-      render();
+      setHeroData({ offers: CONFIG.OFFERS });
+      setCatalog(DUMMY_ITEMS);
     }
     return;
   }
@@ -852,7 +908,12 @@ async function loadCatalog(){
     let retries = 3;
     for (let i = 0; i < retries; i++) {
       try {
-        const res = await fetch(CONFIG.SHEET_API_URL);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const separator = CONFIG.SHEET_API_URL.includes('?') ? '&' : '?';
+        const freshUrl = `${CONFIG.SHEET_API_URL}${separator}v=${Date.now()}`;
+        const res = await fetch(freshUrl, { signal: controller.signal, cache: 'no-store' });
+        clearTimeout(timeoutId);
         const text = await res.text();
         data = JSON.parse(text);
         break; // success
@@ -868,18 +929,8 @@ async function loadCatalog(){
     if (freshStr !== oldStr) {
       localStorage.setItem('inviteCatalogData', freshStr);
       
-      if (!cachedData) {
-        if (data.offers && data.offers.length > 0) {
-          CONFIG.OFFERS = data.offers;
-          initHeroCarousel();
-        } else {
-          document.getElementById('heroCarousel').style.display = 'none';
-        }
-      }
-      
-      ALL_ITEMS = (data.items || []).filter(i => i.Title);
-      buildCategoryPills();
-      render();
+      setHeroData(data);
+      setCatalog(data.items, data.categoryOrder);
     }
   } catch(err) {
     if (!cachedData) {
@@ -896,7 +947,10 @@ async function loadCatalog(){
 }
 
 function buildCategoryPills(){
-  const cats = ['All', ...new Set(ALL_ITEMS.map(i => i.Category).filter(Boolean))];
+  const availableCategories = new Set(ALL_ITEMS.map(i => i.Category).filter(Boolean));
+  const sheetOrdered = CATEGORY_ORDER.filter(category => availableCategories.has(category));
+  const remaining = [...availableCategories].filter(category => !sheetOrdered.includes(category));
+  const cats = ['All', ...sheetOrdered, ...remaining];
   pillRow.innerHTML = cats.map(c =>
     `<button class="pill${c==='All'?' active':''}" data-cat="${escapeAttr(c)}">${escapeHtml(c)}</button>`
   ).join('');
@@ -905,6 +959,7 @@ function buildCategoryPills(){
       pillRow.querySelectorAll('.pill').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       ACTIVE_CATEGORY = btn.dataset.cat;
+      updateHeroForCategory();
       render();
     });
   });
@@ -1052,10 +1107,12 @@ function openLightbox(index){
   LB_INDEX = index;
   renderLightbox();
   document.getElementById('lightbox').classList.add('open');
+  document.body.classList.add('no-scroll');
 }
 
 function closeLightbox(){
   document.getElementById('lightbox').classList.remove('open');
+  document.body.classList.remove('no-scroll');
   document.getElementById('modalStage').innerHTML = '';
 }
 
@@ -1190,8 +1247,14 @@ function escapeAttr(str){ return escapeHtml(str); }
 loadCatalog();
 
 // ---------- hero offer carousel ----------
-function initHeroCarousel(){
-  const slides = CONFIG.OFFERS || [];
+function initHeroCarousel(slides = MAIN_HERO_OFFERS){
+  // Rebuilding the carousel for a tab should also stop the old autoplay and
+  // remove its global drag handlers.
+  if (heroCleanup) {
+    heroCleanup();
+    heroCleanup = null;
+  }
+
   const carousel = document.getElementById('heroCarousel');
   const track = document.getElementById('hcTrack');
   const dotsWrap = document.getElementById('hcDots');
@@ -1240,14 +1303,17 @@ function initHeroCarousel(){
   }
   function stopAutoplay(){ clearInterval(autoplayTimer); }
 
-  nextBtn.addEventListener('click', () => { next(); startAutoplay(); });
-  prevBtn.addEventListener('click', () => { prev(); startAutoplay(); });
-  dotsWrap.addEventListener('click', e => {
+  const onNextClick = () => { next(); startAutoplay(); };
+  const onPrevClick = () => { prev(); startAutoplay(); };
+  const onDotsClick = e => {
     const btn = e.target.closest('button');
     if (!btn) return;
     goTo(Number(btn.dataset.i));
     startAutoplay();
-  });
+  };
+  nextBtn.addEventListener('click', onNextClick);
+  prevBtn.addEventListener('click', onPrevClick);
+  dotsWrap.addEventListener('click', onDotsClick);
 
   // swipe / drag support (touch + mouse)
   let startX = 0, deltaX = 0, dragging = false;
@@ -1267,20 +1333,41 @@ function initHeroCarousel(){
     startAutoplay();
   }
 
-  track.addEventListener('touchstart', e => dragStart(e.touches[0].clientX), { passive:true });
-  track.addEventListener('touchmove', e => dragMove(e.touches[0].clientX), { passive:true });
+  const onTouchStart = e => dragStart(e.touches[0].clientX);
+  const onTouchMove = e => dragMove(e.touches[0].clientX);
+  const onMouseDown = e => { e.preventDefault(); dragStart(e.clientX); };
+  const onMouseEnter = () => stopAutoplay();
+  const onMouseLeave = () => startAutoplay();
+  track.addEventListener('touchstart', onTouchStart, { passive:true });
+  track.addEventListener('touchmove', onTouchMove, { passive:true });
   track.addEventListener('touchend', dragEnd);
 
-  track.addEventListener('mousedown', e => { e.preventDefault(); dragStart(e.clientX); });
-  window.addEventListener('mousemove', e => dragMove(e.clientX));
+  track.addEventListener('mousedown', onMouseDown);
+  const onMouseMove = e => dragMove(e.clientX);
+  window.addEventListener('mousemove', onMouseMove);
   window.addEventListener('mouseup', dragEnd);
   track.querySelectorAll('a.hc-slide').forEach(a => a.addEventListener('click', e => { if (Math.abs(deltaX) > 5) e.preventDefault(); }));
 
-  wrap.addEventListener('mouseenter', stopAutoplay);
-  wrap.addEventListener('mouseleave', startAutoplay);
+  wrap.addEventListener('mouseenter', onMouseEnter);
+  wrap.addEventListener('mouseleave', onMouseLeave);
 
   goTo(0);
   startAutoplay();
+
+  heroCleanup = () => {
+    stopAutoplay();
+    nextBtn.removeEventListener('click', onNextClick);
+    prevBtn.removeEventListener('click', onPrevClick);
+    dotsWrap.removeEventListener('click', onDotsClick);
+    track.removeEventListener('touchstart', onTouchStart);
+    track.removeEventListener('touchmove', onTouchMove);
+    track.removeEventListener('touchend', dragEnd);
+    track.removeEventListener('mousedown', onMouseDown);
+    window.removeEventListener('mousemove', onMouseMove);
+    window.removeEventListener('mouseup', dragEnd);
+    wrap.removeEventListener('mouseenter', onMouseEnter);
+    wrap.removeEventListener('mouseleave', onMouseLeave);
+  };
 }
 
 // ---------- card carousel auto-slide ----------
