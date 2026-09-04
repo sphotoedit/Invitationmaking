@@ -364,6 +364,20 @@
   }
   .card.in-view{ opacity:1; transform:translateY(0); }
   .card:hover{box-shadow:0 18px 40px -14px rgba(28,28,34,.28);}
+  .card.copy-armed{
+    outline:2px solid rgba(37,211,102,.7); outline-offset:3px;
+    cursor:copy;
+  }
+  .copy-toast{
+    position:fixed; left:50%; bottom:24px; z-index:120;
+    transform:translate(-50%, 18px); opacity:0; pointer-events:none;
+    padding:10px 15px; border-radius:999px;
+    background:#1d1d22; color:#fff; font-size:13px; font-weight:700;
+    box-shadow:0 12px 30px rgba(0,0,0,.2);
+    transition:opacity .2s var(--ease), transform .2s var(--ease);
+  }
+  .copy-toast.show{opacity:1; transform:translate(-50%, 0);}
+  @media(max-width:700px){.copy-toast{display:none;}}
 
   .card-media{
     position:relative; aspect-ratio:4/5; background:var(--paper-deep);
@@ -662,6 +676,8 @@
   </div>
 </div>
 
+<div class="copy-toast" id="copyToast" role="status" aria-live="polite">Location copied</div>
+
 <script>
 /* ============================================================
    CONFIG — edit these three lines, nothing else needed
@@ -816,6 +832,7 @@ function setCatalog(items, categoryOrder = []){
   CATEGORY_ORDER = Array.isArray(categoryOrder) && categoryOrder.length ? categoryOrder : rowOrder;
   ALL_ITEMS = shuffleItems(catalogItems);
   buildCategoryPills();
+  applyCategoryFromHash();
   render();
 }
 
@@ -952,18 +969,50 @@ function buildCategoryPills(){
   const remaining = [...availableCategories].filter(category => !sheetOrdered.includes(category));
   const cats = ['All', ...sheetOrdered, ...remaining];
   pillRow.innerHTML = cats.map(c =>
-    `<button class="pill${c==='All'?' active':''}" data-cat="${escapeAttr(c)}">${escapeHtml(c)}</button>`
+    `<button class="pill${c===ACTIVE_CATEGORY?' active':''}" data-cat="${escapeAttr(c)}">${escapeHtml(c)}</button>`
   ).join('');
   pillRow.querySelectorAll('.pill').forEach(btn => {
     btn.addEventListener('click', () => {
-      pillRow.querySelectorAll('.pill').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      ACTIVE_CATEGORY = btn.dataset.cat;
-      updateHeroForCategory();
-      render();
+      selectCategory(btn.dataset.cat, true);
     });
   });
 }
+
+// Direct category links work with both spaces and no spaces, for example:
+// #Birthday, #GaneshChaturthi, #Ganesh%20Chaturthi
+function categoryHashKey(value){
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function categoryFromHash(){
+  const hashValue = decodeURIComponent(window.location.hash.slice(1)).trim();
+  if (!hashValue || categoryHashKey(hashValue) === 'all') return 'All';
+  const categories = ['All', ...new Set(ALL_ITEMS.map(item => item.Category).filter(Boolean))];
+  return categories.find(category => categoryHashKey(category) === categoryHashKey(hashValue)) || null;
+}
+
+function selectCategory(category, updateUrl = false){
+  if (!category) return;
+  ACTIVE_CATEGORY = category;
+  pillRow.querySelectorAll('.pill').forEach(button => {
+    button.classList.toggle('active', button.dataset.cat === ACTIVE_CATEGORY);
+  });
+  updateHeroForCategory();
+  render();
+
+  if (updateUrl){
+    const baseUrl = `${window.location.pathname}${window.location.search}`;
+    const hash = category === 'All' ? '' : `#${category.replace(/\s+/g, '')}`;
+    window.history.pushState(null, '', `${baseUrl}${hash}`);
+  }
+}
+
+function applyCategoryFromHash(){
+  const category = categoryFromHash();
+  if (category) selectCategory(category);
+}
+
+window.addEventListener('hashchange', applyCategoryFromHash);
 
 function render(){
   const q = searchInput.value.trim().toLowerCase();
@@ -999,10 +1048,69 @@ function render(){
   grid.innerHTML = items.map(cardHtml).join('');
 
   grid.querySelectorAll('.card-media').forEach(el => {
-    el.addEventListener('click', () => openLightbox(Number(el.dataset.index)));
+    el.addEventListener('click', event => {
+      if (event.altKey || el.closest('.card')?.dataset.suppressOpen === 'true') return;
+      openLightbox(Number(el.dataset.index));
+    });
+  });
+  grid.querySelectorAll('.card').forEach(card => {
+    enableLocationCopy(card, CURRENT_ITEMS[Number(card.dataset.index)]?.Location);
   });
 
   revealCards();
+}
+
+let copyToastTimer;
+function showCopyToast(message){
+  const toast = document.getElementById('copyToast');
+  toast.textContent = message;
+  toast.classList.add('show');
+  clearTimeout(copyToastTimer);
+  copyToastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+}
+
+async function copyLocation(location){
+  const text = String(location || '').trim();
+  if (!text) return;
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const helper = document.createElement('textarea');
+      helper.value = text;
+      helper.setAttribute('readonly', '');
+      helper.style.cssText = 'position:fixed;opacity:0;pointer-events:none;';
+      document.body.appendChild(helper);
+      helper.select();
+      const copied = document.execCommand('copy');
+      helper.remove();
+      if (!copied) throw new Error('Clipboard copy failed');
+    }
+    showCopyToast('Location copied');
+  } catch (error) {
+    showCopyToast('Could not copy location');
+  }
+}
+
+function enableLocationCopy(card, location){
+  const isDesktop = () => window.matchMedia('(min-width: 701px)').matches;
+  const text = String(location || '').trim();
+  if (!text) return;
+
+  card.title = 'Alt + click to copy location';
+  card.addEventListener('pointerdown', event => {
+    if (!isDesktop() || !event.altKey || event.button !== 0) return;
+    card.classList.add('copy-armed');
+  }, true);
+  card.addEventListener('pointerup', () => card.classList.remove('copy-armed'), true);
+  card.addEventListener('pointercancel', () => card.classList.remove('copy-armed'), true);
+  card.addEventListener('pointerleave', () => card.classList.remove('copy-armed'), true);
+  card.addEventListener('click', event => {
+    if (!isDesktop() || !event.altKey) return;
+    event.preventDefault();
+    event.stopPropagation();
+    copyLocation(text);
+  }, true);
 }
 
 const revealObserver = new IntersectionObserver((entries) => {
@@ -1056,7 +1164,7 @@ function cardHtml(item, index){
   }
 
   return `
-    <article class="card">
+    <article class="card" data-index="${index}">
       <div class="card-media" data-index="${index}">
         ${mediaHtml}
         <div class="type-badge">${typeIcon}</div>
