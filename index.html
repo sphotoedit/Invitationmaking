@@ -83,6 +83,7 @@
     position:absolute; left:14px; top:50%; transform:translateY(-50%);
     width:16px; height:16px; opacity:.55; pointer-events:none;
   }
+  .search-trigger{position:absolute;left:0;top:0;width:40px;height:100%;z-index:2;border:0; padding:0; background:transparent; color:inherit;pointer-events:none;}
   .search-clear{
     position:absolute; right:8px; top:50%; transform:translateY(-50%);
     width:28px; height:28px; border-radius:50%; border:none;
@@ -114,6 +115,40 @@
   }
   .filter-toggle.active svg{opacity:1;}
   .filter-label{display:inline;}
+  .category-toggle{
+    display:inline-flex; align-items:center; justify-content:center;
+    margin-left:8px; width:40px; height:40px; padding:0; flex:0 0 auto;
+    border-radius:999px; border:1.5px solid var(--line); background:#fff; color:var(--ink);
+    box-shadow:var(--shadow); transition:transform .2s var(--ease), border-color .2s var(--ease);
+  }
+  .category-toggle:hover{transform:translateY(-1px);border-color:#d07b56;background:#fff4ee;color:#d07b56;box-shadow:0 0 0 5px rgba(208,123,86,.12);}
+  .category-toggle svg{width:18px;height:18px;fill:currentColor;opacity:.75;}
+  .category-toggle{animation:categoryPulse 1.15s ease-in-out 3;}
+  .category-backdrop{position:fixed;inset:0;z-index:80;background:rgba(20,18,24,.32);opacity:0;pointer-events:none;transition:opacity .25s var(--ease);}
+  .category-backdrop.open{opacity:1;pointer-events:auto;}
+  .category-drawer{
+    position:absolute;right:0;top:0;width:min(330px,88vw);height:100%;background:#fff;
+    padding:24px 18px;box-shadow:-18px 0 48px rgba(20,18,24,.18);transform:translateX(105%);
+    transition:transform .3s var(--ease);overflow-y:auto;
+  }
+  .category-backdrop.open .category-drawer{transform:translateX(0);}
+  .category-drawer-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+  .category-drawer-head h3{margin:0;font-family:var(--font-display);font-size:21px;}
+  .category-close{border:0;background:#f1f1f6;border-radius:50%;width:34px;height:34px;font-size:21px;line-height:1;color:var(--ink);}
+  .category-list{display:flex;flex-direction:column;gap:7px;}
+  .category-item{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:12px;padding:13px 14px;text-align:left;font:700 14px var(--font-body);transition:background .18s var(--ease),border-color .18s var(--ease),color .18s var(--ease),transform .18s var(--ease);}
+  .category-item:hover{background:#fff4ee;border-color:#d07b56;color:#8B4630;transform:translateX(3px);}
+  .category-item.active{background:#d07b56;border-color:#d07b56;color:#fff;}
+  @media(min-width:601px){
+    .category-backdrop{display:block;padding:0;}
+    .category-drawer{
+      position:absolute;top:0;right:0;left:auto;width:min(390px,38vw);height:100%;max-height:none;
+      border-radius:0;padding:28px 22px;transform:translateX(105%);box-shadow:-18px 0 48px rgba(20,18,24,.18);
+    }
+    .category-backdrop.open .category-drawer{transform:translateX(0);}
+    .category-list{display:flex;flex-direction:column;gap:9px;}
+    .category-item{padding:15px 16px;font-size:15px;}
+  }
 
   /* ============ CATEGORY PILLS ============ */
   .pill-row{
@@ -317,7 +352,8 @@
       margin:0;
     }
     .search-wrap input{
-      font-size:14px;
+      /* 16px prevents iPhone Safari from zooming the page on focus. */
+      font-size:16px;
       padding:11px 40px 11px 38px;
     }
     .filter-toggle{
@@ -329,24 +365,41 @@
       justify-content:center;
       flex:0 0 auto;
     }
+    .category-toggle{order:4;margin-left:0;width:40px;height:40px;}
     .filter-label{display:none;}
-    .pill-row{padding:10px 14px 10px;}
+    .pill-row{display:flex; padding:10px 14px 10px;}
     .pill{padding:8px 14px; font-size:13px;}
-    .result-bar{padding:16px 14px 12px; font-size:19px;}
+    .result-bar{padding:16px 14px 12px;}
+    .result-count{font-size:19px;}
+    .quick-type-filters{width:100%; justify-content:flex-start; overflow-x:auto; padding-bottom:2px;}
     .grid-wrap{padding:8px 14px 82px;}
     .grid{grid-template-columns:1fr; gap:14px;}
     .card-body h3{font-size:18px;}
     footer{padding:16px 14px 24px;}
   }
+  @keyframes categoryPulse{
+    0%,100%{box-shadow:var(--shadow);transform:scale(1);}
+    50%{border-color:#d07b56;background:#fff4ee;color:#d07b56;box-shadow:0 0 0 7px rgba(208,123,86,.14);transform:scale(1.08);}
+  }
 
   /* ============ RESULT BAR ============ */
   .result-bar{
     max-width:1180px; margin:0 auto; padding:32px 20px 16px;
+    display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  }
+  .result-count{
     font-family:var(--font-display); font-weight:700; font-size:22px;
     letter-spacing:-.01em; color:var(--ink);
-    display:flex; align-items:center;
   }
-  .result-bar .dot{display:none;}
+  .result-count .dot{display:none;}
+  .quick-type-filters{display:flex; align-items:center; gap:7px;}
+  .quick-type-filter{
+    flex:0 0 auto; border:1px solid var(--line); background:#fff; color:var(--ink-soft);
+    border-radius:999px; padding:8px 12px; font:700 12px var(--font-body); cursor:pointer;
+    transition:all .2s var(--ease);
+  }
+  .quick-type-filter:hover{border-color:var(--blue); color:var(--ink);}
+  .quick-type-filter.active{background:var(--ink); border-color:var(--ink); color:#fff;}
 
   /* ============ GRID ============ */
   .grid-wrap{max-width:1180px; margin:0 auto; padding:28px 20px 80px;}
@@ -355,6 +408,28 @@
   }
   @media(min-width:680px){ .grid{grid-template-columns:repeat(3,1fr);} }
   @media(min-width:980px){ .grid{grid-template-columns:repeat(4,1fr);} }
+  /* Keep the hero-to-results transition compact and easy to scan on phones. */
+  @media(max-width:600px){
+    /* Avoid iPhone/Safari dark repaint lines while the sticky header scrolls. */
+    header.site{
+      background:#fff;
+      backdrop-filter:none;
+      -webkit-backdrop-filter:none;
+      transform:translateZ(0);
+      -webkit-transform:translateZ(0);
+    }
+    .card-media .type-badge{
+      backdrop-filter:none;
+      -webkit-backdrop-filter:none;
+      background:rgba(255,255,255,.92);
+    }
+    .grid-wrap{padding:0 14px 64px;}
+    .result-bar{padding:14px 0 10px; gap:10px; align-items:flex-start;}
+    .result-count{font-size:19px; line-height:1.1;}
+    .quick-type-filters{gap:6px; padding-bottom:0;}
+    .quick-type-filter{padding:7px 10px; font-size:11.5px;}
+    .grid{gap:14px;}
+  }
 
   .card{
     background:#fff; border:1px solid var(--line); border-radius:var(--radius);
@@ -573,13 +648,18 @@
       <img class="logo-img" src="https://i.ibb.co/93NNww80/Invite-Sphotoedit-Logo2.png" alt="Invite Sphotoedit">
     </a>
     <div class="search-wrap">
-      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <button class="search-trigger" id="searchToggle" type="button" aria-label="Open search">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
       <input id="searchInput" type="text" placeholder="Search birthday, wedding, baby shower...">
       <button class="search-clear" id="searchClear" type="button" aria-label="Clear search">&times;</button>
     </div>
     <button class="filter-toggle" id="filterToggle" type="button" aria-label="Open filters">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v2H4zm3 5h10v2H7zm4 5h2v2h-2z"/></svg>
       <span class="filter-label">Filter</span>
+    </button>
+    <button class="category-toggle" id="categoryToggle" type="button" aria-label="Browse invitation categories">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
     </button>
   </div>
   <nav class="pill-row" id="pillRow">
@@ -604,7 +684,10 @@
 </section>
 
 <main class="grid-wrap">
-  <div class="result-bar" id="resultCount"><span class="dot"></span>Loading catalog...</div>
+  <div class="result-bar">
+    <div class="result-count" id="resultCount"><span class="dot"></span>Loading catalog...</div>
+    <div class="quick-type-filters" id="quickTypeFilters" aria-label="Choose invitation type"></div>
+  </div>
   <div class="grid" id="grid">
     <article class="skeleton-card"><div class="skeleton-media shimmer"></div><div class="skeleton-body"><div class="skeleton-title shimmer"></div><div class="skeleton-price shimmer"></div><div class="skeleton-btn shimmer" style="margin-top:14px;"></div></div></article>
     <article class="skeleton-card"><div class="skeleton-media shimmer"></div><div class="skeleton-body"><div class="skeleton-title shimmer"></div><div class="skeleton-price shimmer"></div><div class="skeleton-btn shimmer" style="margin-top:14px;"></div></div></article>
@@ -674,6 +757,16 @@
       <button class="filter-action filter-done" id="filterDone" type="button">Done</button>
     </div>
   </div>
+</div>
+
+<div class="category-backdrop" id="categoryBackdrop" aria-hidden="true">
+  <aside class="category-drawer" role="dialog" aria-modal="true" aria-labelledby="categoryTitle">
+    <div class="category-drawer-head">
+      <h3 id="categoryTitle">Choose category</h3>
+      <button class="category-close" id="categoryClose" type="button" aria-label="Close categories">&times;</button>
+    </div>
+    <div class="category-list" id="categoryList"></div>
+  </aside>
 </div>
 
 <div class="copy-toast" id="copyToast" role="status" aria-live="polite">Location copied</div>
@@ -756,9 +849,28 @@ const filterReset = document.getElementById('filterReset');
 const filterDone = document.getElementById('filterDone');
 const priceFilters = document.getElementById('priceFilters');
 const typeFilters = document.getElementById('typeFilters');
+const quickTypeFilters = document.getElementById('quickTypeFilters');
+const categoryToggle = document.getElementById('categoryToggle');
+const categoryBackdrop = document.getElementById('categoryBackdrop');
+const categoryClose = document.getElementById('categoryClose');
+const categoryList = document.getElementById('categoryList');
 
 function waLink(message){
   return `https://wa.me/${CONFIG.WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+}
+
+function orderMessage(item, price){
+  const firstImage = toImageUrl(item['URL 1'] || item.ThumbnailURL || item.MediaURL || '');
+  const code = item['Invite Code'] || item['C'] || item['Code'] || item['No.'] || item.ID || '';
+  const details = [
+    `Hi! I want to order "${item.Category || item.Title} Invite"`,
+    price ? `*Price - ₹${price}*` : '',
+    code ? `Invite Code - ${code}` : ''
+  ].filter(Boolean).join('\n');
+
+  // A visible direct-image link lets WhatsApp generate its normal link preview.
+  // WhatsApp does not permit a website link to attach media automatically.
+  return firstImage ? `${firstImage}\n\n${details}` : details;
 }
 
 function syncSearchClear(){
@@ -773,6 +885,14 @@ function openFilterSheet(){
 function closeFilterSheet(){
   filterBackdrop.classList.remove('open');
   filterBackdrop.setAttribute('aria-hidden', 'true');
+}
+function openCategoryDrawer(){
+  categoryBackdrop.classList.add('open');
+  categoryBackdrop.setAttribute('aria-hidden', 'false');
+}
+function closeCategoryDrawer(){
+  categoryBackdrop.classList.remove('open');
+  categoryBackdrop.setAttribute('aria-hidden', 'true');
 }
 function renderFilterSheet(){
   priceFilters.innerHTML = PRICE_FILTERS.map(f => `
@@ -794,6 +914,17 @@ function renderFilterSheet(){
       renderFilterSheet();
     });
   });
+}
+
+function renderQuickTypeFilters(){
+  const choices = [
+    { key:'All', label:'All Invites' },
+    { key:'Image', label:'Image Invites' },
+    { key:'Video', label:'Video Invites' }
+  ];
+  quickTypeFilters.innerHTML = choices.map(choice => `
+    <button class="quick-type-filter${ACTIVE_TYPE===choice.key?' active':''}" type="button" data-quick-type="${choice.key}">${choice.label}</button>
+  `).join('');
 }
 
 function matchesPriceFilter(item){
@@ -976,6 +1107,15 @@ function buildCategoryPills(){
       selectCategory(btn.dataset.cat, true);
     });
   });
+  renderCategoryDrawer(cats);
+}
+
+function renderCategoryDrawer(categories){
+  // "All" remains available in the horizontal tabs, while this menu stays
+  // focused on choosing a specific invitation category.
+  categoryList.innerHTML = categories.filter(category => category !== 'All').map(category => `
+    <button class="category-item${category===ACTIVE_CATEGORY?' active':''}" type="button" data-category="${escapeAttr(category)}">${escapeHtml(category)}</button>
+  `).join('');
 }
 
 // Direct category links work with both spaces and no spaces, for example:
@@ -996,6 +1136,9 @@ function selectCategory(category, updateUrl = false){
   ACTIVE_CATEGORY = category;
   pillRow.querySelectorAll('.pill').forEach(button => {
     button.classList.toggle('active', button.dataset.cat === ACTIVE_CATEGORY);
+  });
+  categoryList.querySelectorAll('.category-item').forEach(button => {
+    button.classList.toggle('active', button.dataset.category === ACTIVE_CATEGORY);
   });
   updateHeroForCategory();
   render();
@@ -1020,6 +1163,7 @@ function render(){
   
   const isFilterActive = (ACTIVE_PRICE !== 'All' || ACTIVE_TYPE !== 'All');
   filterToggle.classList.toggle('active', isFilterActive);
+  renderQuickTypeFilters();
   
   let items = ALL_ITEMS;
   if (ACTIVE_CATEGORY !== 'All'){
@@ -1135,7 +1279,7 @@ function cardHtml(item, index){
   const urls = [item['URL 1'], item['URL 2'], item['URL 3']].filter(Boolean).map(toImageUrl);
   const thumb = urls[0] || toImageUrl(item.ThumbnailURL) || toImageUrl(item.MediaURL) || '';
   const code = item['Invite Code'] || item['C'] || item['Code'] || item['No.'] || item.ID || '';
-  const orderMsg = `Hi! I want to order "${item.Category || item.Title} Invite" Price - ₹${item.Price || ''}${code ? ` | Invite Code - ${code}` : ''}`;
+  const orderMsg = orderMessage(item, item.Price || item['Discount Price'] || item['Main Price'] || '');
   const typeIcon = isVideo
     ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>'
     : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm0 2v8.17l2.59-2.58a2 2 0 0 1 2.82 0L13 14.17l2.59-2.58a2 2 0 0 1 2.82 0L19 12.17V6H5zm4 2.25A1.75 1.75 0 1 0 9 11.75 1.75 1.75 0 0 0 9 8.25z"/></svg>';
@@ -1276,8 +1420,7 @@ function renderLightbox(){
   document.getElementById('mfEyebrow').textContent = `${item.Category || ''} · ${isVideo ? 'Video' : 'Image'}`;
   document.getElementById('mfTitle').textContent = item.Title || '';
   document.getElementById('mfPrice').innerHTML = priceHtml;
-  const code = item['Invite Code'] || item['C'] || item['Code'] || item['No.'] || item.ID || '';
-  const orderMsg = `Hi! I want to order "${item.Category || item.Title} Invite" Price - ₹${finalPrice}${code ? ` | Invite Code - ${code}` : ''}`;
+  const orderMsg = orderMessage(item, finalPrice);
   document.getElementById('mfOrder').href = waLink(orderMsg);
 
   const showNav = CURRENT_ITEMS.length > 1;
@@ -1329,6 +1472,23 @@ searchClear.addEventListener('click', () => {
   render();
 });
 filterToggle.addEventListener('click', openFilterSheet);
+categoryToggle.addEventListener('click', openCategoryDrawer);
+categoryClose.addEventListener('click', closeCategoryDrawer);
+categoryBackdrop.addEventListener('click', event => {
+  if (event.target === categoryBackdrop) closeCategoryDrawer();
+});
+categoryList.addEventListener('click', event => {
+  const button = event.target.closest('[data-category]');
+  if (!button) return;
+  selectCategory(button.dataset.category, true);
+  closeCategoryDrawer();
+});
+quickTypeFilters.addEventListener('click', event => {
+  const button = event.target.closest('[data-quick-type]');
+  if (!button) return;
+  ACTIVE_TYPE = button.dataset.quickType;
+  render();
+});
 filterClose.addEventListener('click', closeFilterSheet);
 filterDone.addEventListener('click', () => {
   closeFilterSheet();
@@ -1345,6 +1505,7 @@ filterBackdrop.addEventListener('click', e => {
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && filterBackdrop.classList.contains('open')) closeFilterSheet();
+  if (e.key === 'Escape' && categoryBackdrop.classList.contains('open')) closeCategoryDrawer();
 });
 
 function escapeHtml(str){
