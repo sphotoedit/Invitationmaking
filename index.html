@@ -1252,7 +1252,6 @@ function enableLocationCopy(card, location){
   const text = String(location || '').trim();
   if (!text) return;
 
-  card.title = 'Alt + click to copy location';
   card.addEventListener('pointerdown', event => {
     if (!isDesktop() || !event.altKey || event.button !== 0) return;
     card.classList.add('copy-armed');
