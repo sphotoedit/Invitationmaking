@@ -370,8 +370,8 @@
     .pill-row{display:flex; padding:10px 14px 10px;}
     .pill{padding:8px 14px; font-size:13px;}
     .result-bar{padding:16px 14px 12px;}
-    .result-count{font-size:19px;}
-    .quick-type-filters{width:100%; justify-content:flex-start; overflow-x:auto; padding-bottom:2px;}
+    .quick-type-filters{width:100%; justify-content:stretch; gap:9px; overflow:visible; padding-bottom:2px;}
+    .quick-type-filter{flex:1;justify-content:center;min-height:44px;padding:10px 8px;font-size:12.5px;}
     .grid-wrap{padding:8px 14px 82px;}
     .grid{grid-template-columns:1fr; gap:14px;}
     .card-body h3{font-size:18px;}
@@ -384,22 +384,26 @@
 
   /* ============ RESULT BAR ============ */
   .result-bar{
-    max-width:1180px; margin:0 auto; padding:32px 20px 16px;
-    display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+    max-width:1180px; margin:0 auto; padding:22px 20px 16px;
+    display:flex; align-items:center;
   }
-  .result-count{
-    font-family:var(--font-display); font-weight:700; font-size:22px;
-    letter-spacing:-.01em; color:var(--ink);
-  }
-  .result-count .dot{display:none;}
+  .result-count{display:none;}
   .quick-type-filters{display:flex; align-items:center; gap:7px;}
   .quick-type-filter{
-    flex:0 0 auto; border:1px solid var(--line); background:#fff; color:var(--ink-soft);
-    border-radius:999px; padding:8px 12px; font:700 12px var(--font-body); cursor:pointer;
-    transition:all .2s var(--ease);
+    flex:0 0 auto; display:inline-flex; align-items:center; gap:7px; border:1.5px solid rgba(208,123,86,.38); background:#fffaf7; color:#8B4630;
+    border-radius:12px; padding:9px 13px; font:800 12px var(--font-body); cursor:pointer;
+    box-shadow:0 4px 10px -8px rgba(139,70,48,.45); transition:all .2s var(--ease);
   }
-  .quick-type-filter:hover{border-color:var(--blue); color:var(--ink);}
-  .quick-type-filter.active{background:var(--ink); border-color:var(--ink); color:#fff;}
+  .quick-type-filter:hover{border-color:#d07b56;background:#fff4ee;color:#8B4630;transform:translateY(-1px);}
+  .quick-type-filter.active{background:linear-gradient(135deg,#d07b56,#b75f40); border-color:#d07b56; color:#fff;box-shadow:0 9px 18px -11px rgba(183,95,64,.75);}
+  .quick-type-filter svg{width:16px;height:16px;fill:currentColor;flex:0 0 auto;}
+  .quick-type-filter span{white-space:nowrap;}
+  @media(min-width:601px){
+    .result-bar{padding:28px 20px 20px;justify-content:flex-end;}
+    .quick-type-filters{gap:10px;}
+    .quick-type-filter{min-height:44px;padding:10px 15px;font-size:13px;}
+    .quick-type-filter svg{width:16px;height:16px;}
+  }
 
   /* ============ GRID ============ */
   .grid-wrap{max-width:1180px; margin:0 auto; padding:28px 20px 80px;}
@@ -426,8 +430,8 @@
     .grid-wrap{padding:0 14px 64px;}
     .result-bar{padding:14px 0 10px; gap:10px; align-items:flex-start;}
     .result-count{font-size:19px; line-height:1.1;}
-    .quick-type-filters{gap:6px; padding-bottom:0;}
-    .quick-type-filter{padding:7px 10px; font-size:11.5px;}
+    .quick-type-filters{gap:9px; padding-bottom:0;}
+    .quick-type-filter{min-height:44px;padding:10px 8px;font-size:12.5px;}
     .grid{gap:14px;}
   }
 
@@ -684,7 +688,7 @@
 
 <main class="grid-wrap">
   <div class="result-bar">
-    <div class="result-count" id="resultCount"><span class="dot"></span>Loading catalog...</div>
+    <div class="result-count" id="resultCount" aria-live="polite"></div>
     <div class="quick-type-filters" id="quickTypeFilters" aria-label="Choose invitation type"></div>
   </div>
   <div class="grid" id="grid">
@@ -915,14 +919,14 @@ function renderFilterSheet(){
   });
 }
 
-function renderQuickTypeFilters(){
+function renderQuickTypeFilters(counts = {}){
   const choices = [
-    { key:'All', label:'All Invites' },
-    { key:'Image', label:'Image Invites' },
-    { key:'Video', label:'Video Invites' }
+    { key:'All', label:'All', icon:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h5v5H5zm9 0h5v5h-5zM5 14h5v5H5zm9 0h5v5h-5z"/></svg>' },
+    { key:'Image', label:'Images', icon:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm0 2v8.17l2.59-2.58a2 2 0 0 1 2.82 0L13 14.17l2.59-2.58a2 2 0 0 1 2.82 0L19 12.17V6H5zm4 2.25A1.75 1.75 0 1 0 9 11.75 1.75 1.75 0 0 0 9 8.25z"/></svg>' },
+    { key:'Video', label:'Videos', icon:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>' }
   ];
   quickTypeFilters.innerHTML = choices.map(choice => `
-    <button class="quick-type-filter${ACTIVE_TYPE===choice.key?' active':''}" type="button" data-quick-type="${choice.key}">${choice.label}</button>
+    <button class="quick-type-filter${ACTIVE_TYPE===choice.key?' active':''}" type="button" data-quick-type="${choice.key}">${choice.icon}<span>${choice.label} ${counts[choice.key] || 0}</span></button>
   `).join('');
 }
 
@@ -1162,15 +1166,14 @@ function render(){
   
   const isFilterActive = (ACTIVE_PRICE !== 'All' || ACTIVE_TYPE !== 'All');
   filterToggle.classList.toggle('active', isFilterActive);
-  renderQuickTypeFilters();
   
-  let items = ALL_ITEMS;
+  let availableItems = ALL_ITEMS;
   if (ACTIVE_CATEGORY !== 'All'){
-    items = items.filter(i => i.Category === ACTIVE_CATEGORY);
+    availableItems = availableItems.filter(i => i.Category === ACTIVE_CATEGORY);
   }
-  items = items.filter(matchesPriceFilter).filter(matchesTypeFilter);
+  availableItems = availableItems.filter(matchesPriceFilter);
   if (q){
-    items = items.filter(i => {
+    availableItems = availableItems.filter(i => {
       const code = String(i['Invite Code'] || i['C'] || i['Code'] || i['No.'] || i.ID || '').toLowerCase();
       return String(i.Title).toLowerCase().includes(q) ||
              String(i.Category).toLowerCase().includes(q) ||
@@ -1179,7 +1182,16 @@ function render(){
     });
   }
 
-  resultCount.innerHTML = `<span class="dot"></span>${items.length} Design${items.length===1?'':'s'} Available`;
+  const typeCounts = {
+    All: availableItems.length,
+    Image: availableItems.filter(item => String(item.Type || '').toLowerCase() === 'image').length,
+    Video: availableItems.filter(item => String(item.Type || '').toLowerCase() === 'video').length
+  };
+  renderQuickTypeFilters(typeCounts);
+
+  const items = availableItems.filter(matchesTypeFilter);
+
+  resultCount.textContent = `${items.length} Design${items.length===1?'':'s'} Available`;
 
   CURRENT_ITEMS = items;
 
